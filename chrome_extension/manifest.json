@@ -1,13 +1,13 @@
 {
-    "name": "Ana Lisa Mosto Mates",
+    "name": "SayWhat",
     "version": "1.0",
-    "description": "Ana Lisa Mosto Mates extension",
+    "description": "Real time captions for your video-conferencing calls",
     "background": {
         "scripts": ["background.js"],
         "persistent": true
     },
     "browser_action": {
-        "default_title": "Inject!"
+        "default_title": "SayWhat"
     },
     "permissions": [
         "https://*/*",
