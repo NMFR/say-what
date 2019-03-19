@@ -81,7 +81,7 @@ const server = http.createServer((request, response) => {
   console.log("New server request");
 });
 
-server.listen(PORT, () => {
+server.listen(PORT,'0.0.0.0',() => {
   console.log(`Server started listening on port ${PORT}`);
 });
 
