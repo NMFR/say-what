@@ -35,7 +35,7 @@ wsServer.on("request", function(request) {
         sampleRateHertz: 16000,
         languageCode: "en-US"
       },
-      interimResults: false // If you want interim results, set this to true
+      interimResults: true // If you want interim results, set this to true
     })
     .on("error", console.error)
     .on("data", data =>
@@ -51,7 +51,15 @@ wsServer.on("request", function(request) {
   // This is the most important callback for us, we'll handle
   // all messages from users here.
   connection.on("message", function(data) {
-    const buffer = new Int16Array(data, 0, Math.floor(data.byteLength / 2));
+    const buffer = new Int16Array(
+      data.binaryData,
+      0,
+      Math.floor(data.byteLength / 2)
+    );
+    //const buffer = Int16Array.from(data);
+    //const buffer = data;
+    //console.log(data);
+    //console.log(buffer[0], buffer[1]);
     // Write the data chunk in the stream
     recognizeStream.write(buffer);
     // console.log("socket message");

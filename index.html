@@ -88,9 +88,11 @@
       const onStreamAudioData = e => {
         const floatSamples = e.inputBuffer.getChannelData(0);
         if (socket && socket.readyState === socket.OPEN) {
-          socket.send(
-            Int16Array.from(floatSamples.map(n => n * ConversionFactor))
+          const intSamples = Int16Array.from(
+            floatSamples.map(n => n * ConversionFactor)
           );
+          socket.send(intSamples);
+          //console.log(intSamples[0], intSamples[1]);
         }
         // const intSamples = Int16Array.from(
         //   floatSamples.map(n => n * ConversionFactor)
