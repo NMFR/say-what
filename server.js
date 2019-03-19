@@ -42,7 +42,7 @@ function parseSpeechResults(data) {
       const isFinal = result.isFinal;
       const stability = result.stability;
 
-      if (!isFinal && stability < 0.05) {
+      if (!isFinal && stability < 0.02) {
         return null;
       }
 
@@ -98,7 +98,11 @@ wsServer.on("request", request => {
     recognizeStream: null
   };
   socketConnections.push(socketConnection);
-  console.log("New socket request", name, socketConnections.map(s => s.name));
+  console.log(
+    "New socket request",
+    socketConnection.id,
+    socketConnections.map(s => s.name)
+  );
   idGenerator += 1;
 
   const onData = results => {
@@ -113,19 +117,23 @@ wsServer.on("request", request => {
     socketConnection.recognizeStream = null;
     console.log(
       "recognizeStream closed due to error",
-      name,
+      socketConnection.id,
       err.name,
       err.message
     );
   };
 
   socketConnection.connection.on("message", data => {
+    if (data.type === "nameChange" && data.name) {
+      socketConnection.name = data.name;
+      return;
+    }
     if (!socketConnection.recognizeStream) {
       socketConnection.recognizeStream = setupSpeechRecognizeStream({
         onData,
         onError
       });
-      console.log("Created new recognizeStream for", name);
+      console.log("Created new recognizeStream for", socketConnection.id);
     }
     const buffer = new Int16Array(
       data.binaryData,
@@ -137,7 +145,13 @@ wsServer.on("request", request => {
 
   socketConnection.connection.on("close", () => {
     socketConnection.recognizeStream && socketConnection.recognizeStream.end();
-    socketConnections = socketConnections.filter(c => c.name !== name);
-    console.log("Socket closed", name, socketConnections.map(s => s.name));
+    socketConnections = socketConnections.filter(
+      c => c.id !== socketConnection.id
+    );
+    console.log(
+      "Socket closed",
+      socketConnection.id,
+      socketConnections.map(s => s.name)
+    );
   });
 });
