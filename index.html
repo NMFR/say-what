@@ -1,0 +1,113 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Typist</title>
+    <style>
+      body {
+        max-width: 640;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main></main>
+    <script type="application/javascript">
+      const WebSocket = window.WebSocket || window.MozWebSocket;
+
+      function createWebSocket() {
+        const connection = new WebSocket("ws://127.0.0.1:1337");
+
+        connection.onopen = function() {
+          console.log("onopen");
+        };
+
+        connection.onerror = function(error) {
+          console.log("onerror", error);
+        };
+
+        connection.onmessage = function(message) {
+          console.log("onmessage", message);
+
+          // try to decode json (I assume that each message
+          // from server is json)
+          try {
+            var json = JSON.parse(message.data);
+          } catch (e) {
+            console.log("This doesn't look like a valid JSON: ", message.data);
+            return;
+          }
+          // handle incoming message
+        };
+
+        return connection;
+      }
+
+      let socket = createWebSocket();
+
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+
+      function getAudioStream() {
+        return navigator.mediaDevices.getUserMedia({
+          audio: {
+            mandatory: {
+              googEchoCancellation: "false",
+              googAutoGainControl: "false",
+              googNoiseSuppression: "false",
+              googHighpassFilter: "false"
+            }
+          }
+        });
+      }
+
+      function startRecording(stream) {
+        const audioContext = new AudioContext();
+        if (!audioContext) {
+          return;
+        }
+
+        const inputPoint = audioContext.createGain();
+        const microphone = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        const scriptProcessor = inputPoint.context.createScriptProcessor(
+          2048,
+          2,
+          2
+        );
+
+        microphone.connect(inputPoint);
+        inputPoint.connect(analyser);
+        inputPoint.connect(scriptProcessor);
+        scriptProcessor.connect(inputPoint.context.destination);
+        // This is for registering to the “data” event of audio stream, without overwriting the default scriptProcessor.onAudioProcess function if there is one.
+        scriptProcessor.addEventListener("audioprocess", onStreamAudioData);
+      }
+
+      const ConversionFactor = 2 ** (16 - 1) - 1; // 32767
+      const onStreamAudioData = e => {
+        const floatSamples = e.inputBuffer.getChannelData(0);
+        if (socket && socket.readyState === socket.OPEN) {
+          socket.send(
+            Int16Array.from(floatSamples.map(n => n * ConversionFactor))
+          );
+        }
+        // const intSamples = Int16Array.from(
+        //   floatSamples.map(n => n * ConversionFactor)
+        // );
+        // // HERE GOES THE CODE TO SEND THE CHUNKED DATA FROM STREAM
+        // if (socket && socket.readyState === socket.OPEN) {
+        //   socket.send(new Int16Array(floatSamples.buffer));
+        // }
+        // console.log(e, floatSamples, intSamples, floatSamples.buffer);
+      };
+
+      async function main() {
+        const stream = await getAudioStream();
+        startRecording(stream);
+      }
+
+      main();
+    </script>
+  </body>
+</html>
