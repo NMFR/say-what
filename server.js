@@ -19,7 +19,7 @@ function broadcastMessage(data) {
       const socketConnection = socketConnections[i];
       socketConnection.connection.sendUTF(data);
     } catch (err) {
-      console.log("broadcastMessage error", i, socketConnection.name, err);
+      console.log("broadcastMessage error", i, socketConnection.id, err);
     }
   }
 }
@@ -42,14 +42,14 @@ function parseSpeechResults(data) {
       const isFinal = result.isFinal;
       const stability = result.stability;
 
-      if (!isFinal && stability < 0.05) {
+      if (!isFinal && stability < 0.02) {
         return null;
       }
 
       const alternative = (result.alternatives || []).reduce((a, c) => {
         const aConfidence = (a && a.confidence) || 0;
         const cConfidence = (c && c.confidence) || 0;
-        return a > c ? a : c;
+        return aConfidence > cConfidence ? a : c;
       }, {});
 
       if (!alternative.transcript) {
@@ -66,14 +66,22 @@ function parseSpeechResults(data) {
     .filter(result => !!result);
 }
 
-function setupSpeechRecognizeStream({ onData, onError }) {
+function setupSpeechRecognizeStream({ onData, onError } = {}) {
   return createSpeechRecognizeStream()
     .on("data", data => {
-      const results = parseSpeechResults(data);
-      onData(results);
+      try {
+        const results = parseSpeechResults(data);
+        onData(results);
+      } catch (err) {
+        console.log("streamingRecognize.onData error", err);
+      }
     })
     .on("error", err => {
-      onError(err);
+      try {
+        onError(err);
+      } catch (err) {
+        console.log("streamingRecognize.onError error", err);
+      }
     });
 }
 
@@ -90,54 +98,81 @@ const wsServer = new WebSocketServer({
 });
 
 wsServer.on("request", request => {
-  const name = `user${idGenerator}`;
-  const socketConnection = {
-    id: name,
-    name,
-    connection: request.accept(null, request.origin),
-    recognizeStream: null
-  };
-  socketConnections.push(socketConnection);
-  console.log("New socket request", name, socketConnections.map(s => s.name));
-  idGenerator += 1;
-
-  const onData = results => {
-    (results || []).forEach(result => {
-      result.id = socketConnection.id;
-      result.name = socketConnection.name;
-      const json = JSON.stringify(result);
-      broadcastMessage(json);
-    });
-  };
-  const onError = err => {
-    socketConnection.recognizeStream = null;
-    console.log(
-      "recognizeStream closed due to error",
+  try {
+    const name = `user${idGenerator}`;
+    const socketConnection = {
+      id: name,
       name,
-      err.name,
-      err.message
+      connection: request.accept(null, request.origin),
+      recognizeStream: null
+    };
+    socketConnections.push(socketConnection);
+    console.log(
+      "New socket request",
+      socketConnection.id,
+      socketConnections.map(s => s.name)
     );
-  };
+    idGenerator += 1;
 
-  socketConnection.connection.on("message", data => {
-    if (!socketConnection.recognizeStream) {
-      socketConnection.recognizeStream = setupSpeechRecognizeStream({
-        onData,
-        onError
+    const onData = results => {
+      (results || []).forEach(result => {
+        result.id = socketConnection.id;
+        result.name = socketConnection.name;
+        const json = JSON.stringify(result);
+        broadcastMessage(json);
       });
-      console.log("Created new recognizeStream for", name);
-    }
-    const buffer = new Int16Array(
-      data.binaryData,
-      0,
-      Math.floor(data.byteLength / 2)
-    );
-    socketConnection.recognizeStream.write(buffer);
-  });
+    };
+    const onError = err => {
+      socketConnection.recognizeStream = null;
+      console.log(
+        "recognizeStream closed due to error",
+        socketConnection.id,
+        err.name,
+        err.message
+      );
+    };
 
-  socketConnection.connection.on("close", () => {
-    socketConnection.recognizeStream && socketConnection.recognizeStream.end();
-    socketConnections = socketConnections.filter(c => c.name !== name);
-    console.log("Socket closed", name, socketConnections.map(s => s.name));
-  });
+    socketConnection.connection.on("message", data => {
+      try {
+        if (data.type === "nameChange" && data.name) {
+          socketConnection.name = data.name;
+          return;
+        }
+        if (!socketConnection.recognizeStream) {
+          socketConnection.recognizeStream = setupSpeechRecognizeStream({
+            onData,
+            onError
+          });
+          console.log("Created new recognizeStream for", socketConnection.id);
+        }
+        const buffer = new Int16Array(
+          data.binaryData,
+          0,
+          Math.floor(data.byteLength / 2)
+        );
+        socketConnection.recognizeStream.write(buffer);
+      } catch (err) {
+        console.log("socketConnection.connection.onMessage error", err);
+      }
+    });
+
+    socketConnection.connection.on("close", () => {
+      try {
+        socketConnection.recognizeStream &&
+          socketConnection.recognizeStream.end();
+        socketConnections = socketConnections.filter(
+          c => c.id !== socketConnection.id
+        );
+        console.log(
+          "Socket closed",
+          socketConnection.id,
+          socketConnections.map(s => s.name)
+        );
+      } catch (err) {
+        console.log("socketConnection.connection.onclose error", err);
+      }
+    });
+  } catch (err) {
+    console.log("webSocket.request error");
+  }
 });
