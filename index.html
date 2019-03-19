@@ -14,6 +14,53 @@
   <body>
     <main></main>
     <script type="application/javascript">
+      function addTranscript(containerDomElem, result) {
+        if (
+          containerDomElem &&
+          result &&
+          result.text &&
+          (result.isFinal || result.stability > 0.05)
+        ) {
+          const children = containerDomElem.children || [];
+          let last = children[children.length - 1] || null;
+          let lastIsFinal =
+            last && last.className && last.className.indexOf("final") >= 0;
+
+          const newElement = !last || lastIsFinal;
+          if (newElement) {
+            last = document.createElement("div");
+            containerDomElem.appendChild(last);
+            lastIsFinal = false;
+          }
+
+          last.innerText = result.text;
+          if (result.isFinal) {
+            last.className = "final";
+          }
+        }
+      }
+
+      function addTranscripts(containerDomElem, results) {
+        if (containerDomElem && results && results.length) {
+          let lastNotFinal = null;
+          for (let i = 0; i < results.length; i += 1) {
+            const result = results[i];
+            if (!result.isFinal) {
+              lastNotFinal = result;
+            } else {
+              addTranscript(containerDomElem, result);
+              lastNotFinal = null;
+            }
+          }
+
+          if (lastNotFinal) {
+            addTranscript(containerDomElem, lastNotFinal);
+          }
+        }
+      }
+
+      const transcriptContainer = document.querySelector("main");
+
       const WebSocket = window.WebSocket || window.MozWebSocket;
 
       function createWebSocket() {
@@ -33,6 +80,7 @@
           try {
             var json = JSON.parse(message.data);
             console.log(json);
+            addTranscript(transcriptContainer, json);
           } catch (e) {
             console.log("This doesn't look like a valid JSON: ", message.data);
             return;

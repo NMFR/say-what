@@ -7,7 +7,6 @@ const googleCloudSpeech = require("@google-cloud/speech");
 const WebSocketServer = websocket.server;
 
 const PORT = 1337;
-// DEADLINE_EXCEEDED
 
 const speechClient = new googleCloudSpeech.SpeechClient();
 
@@ -59,17 +58,17 @@ function setupSpeechRecognizeStream({ onData, onError }) {
       onError(err);
     })
     .on("data", data => {
-      console.log(
-        "google.data",
-        JSON.stringify(data),
-        data.results[0] && data.results[0].alternatives[0]
-          ? `Transcription: ${data.results[0].alternatives[0].transcript}\n`
-          : `\n\nReached transcription time limit, press Ctrl+C\n`
-      );
+      // console.log(
+      //   "google.data",
+      //   JSON.stringify(data),
+      //   data.results[0] && data.results[0].alternatives[0]
+      //     ? `Transcription: ${data.results[0].alternatives[0].transcript}\n`
+      //     : `\n\nReached transcription time limit, press Ctrl+C\n`
+      // );
 
       const results = parseSpeechResults(data);
 
-      console.log(results);
+      // console.log(results);
 
       onData(results);
     });
