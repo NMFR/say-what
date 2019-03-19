@@ -8,17 +8,34 @@
       body {
         max-width: 640;
         margin: 0 auto;
+        background-image: url("https://stmed.net/sites/default/files/wallpaper-wallpapers-25347-2123783.jpg");
       }
 
       .typist-transcript {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 35%;
+        min-width: 100px;
+        max-width: 500px;
+        background-color: rgba(22, 38, 55, 0.8);
+        color: white;
+        padding: 15px;
+        z-index: 9999;
+        overflow-y: auto;
       }
 
       .typist-transcript > div {
+        border-radius: 0 5px 5px;
+        margin-bottom: 5px;
+        padding: 3px;
+        background-color: rgba(22, 38, 55, 0.8);
       }
 
-      .typist-transcript > div > span:after {
-        content: ":";
-        margin-right: 4px;
+      .typist-transcript > div > span {
+        color: #4c9aff;
+        display: block;
       }
     </style>
   </head>
@@ -64,6 +81,8 @@
           last.innerHTML = `${
             result.name ? `<span>${result.name}</span>` : ""
           }${result.text}`;
+          last.scrollIntoView &&
+            last.scrollIntoView({ behavior: "smooth", block: "end" });
           if (result.isFinal) {
             last.className = "final";
           }
