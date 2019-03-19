@@ -9,11 +9,39 @@
         max-width: 640;
         margin: 0 auto;
       }
+
+      .typist-transcript {
+      }
+
+      .typist-transcript > div {
+      }
+
+      .typist-transcript > div > span:after {
+        content: ":";
+        margin-right: 4px;
+      }
     </style>
   </head>
   <body>
-    <main></main>
+    <main class="typist-transcript"></main>
     <script type="application/javascript">
+      function findLastTranscript(containerDomElem, userId) {
+        if (!containerDomElem) {
+          return null;
+        }
+
+        const children = containerDomElem.children || [];
+        for (let i = children.length - 1; i >= 0; i -= 1) {
+          const child = children[i];
+          const childUserId = child.getAttribute("userId");
+          if (childUserId === userId) {
+            return child;
+          }
+        }
+
+        return null;
+      }
+
       function addTranscript(containerDomElem, result) {
         if (
           containerDomElem &&
@@ -21,19 +49,21 @@
           result.text &&
           (result.isFinal || result.stability > 0.05)
         ) {
-          const children = containerDomElem.children || [];
-          let last = children[children.length - 1] || null;
+          let last = findLastTranscript(containerDomElem, result.id);
           let lastIsFinal =
             last && last.className && last.className.indexOf("final") >= 0;
 
           const newElement = !last || lastIsFinal;
           if (newElement) {
             last = document.createElement("div");
+            last.setAttribute("userId", result.id || "");
             containerDomElem.appendChild(last);
             lastIsFinal = false;
           }
 
-          last.innerText = result.text;
+          last.innerHTML = `${
+            result.name ? `<span>${result.name}</span>` : ""
+          }${result.text}`;
           if (result.isFinal) {
             last.className = "final";
           }

@@ -10,6 +10,20 @@ const PORT = 1337;
 
 const speechClient = new googleCloudSpeech.SpeechClient();
 
+let idGenerator = 1;
+let socketConnections = [];
+
+function broadcastMessage(data) {
+  for (let i = 0; i < socketConnections.length; i += 1) {
+    try {
+      const socketConnection = socketConnections[i];
+      socketConnection.connection.sendUTF(data);
+    } catch (err) {
+      console.log("broadcastMessage error", i, socketConnection.name, err);
+    }
+  }
+}
+
 function createSpeechRecognizeStream() {
   return speechClient.streamingRecognize({
     config: {
@@ -27,21 +41,26 @@ function parseSpeechResults(data) {
     .map(result => {
       const isFinal = result.isFinal;
       const stability = result.stability;
-      const alternatives = (result.alternatives || []).reduce((a, c) => {
+
+      if (!isFinal && stability < 0.05) {
+        return null;
+      }
+
+      const alternative = (result.alternatives || []).reduce((a, c) => {
         const aConfidence = (a && a.confidence) || 0;
         const cConfidence = (c && c.confidence) || 0;
         return a > c ? a : c;
       }, {});
 
-      if (!alternatives.transcript) {
+      if (!alternative.transcript) {
         return null;
       }
 
       return {
         isFinal,
         stability,
-        text: alternatives.transcript,
-        confidence: alternatives.confidence
+        text: alternative.transcript.trim(),
+        confidence: alternative.confidence
       };
     })
     .filter(result => !!result);
@@ -49,28 +68,12 @@ function parseSpeechResults(data) {
 
 function setupSpeechRecognizeStream({ onData, onError }) {
   return createSpeechRecognizeStream()
-    .on("error", err => {
-      console.error("google.error", err);
-      console.error("google.error.name", err.name);
-      console.error("google.error.code", err.code);
-      console.error("google.error.message", err.message);
-
-      onError(err);
-    })
     .on("data", data => {
-      // console.log(
-      //   "google.data",
-      //   JSON.stringify(data),
-      //   data.results[0] && data.results[0].alternatives[0]
-      //     ? `Transcription: ${data.results[0].alternatives[0].transcript}\n`
-      //     : `\n\nReached transcription time limit, press Ctrl+C\n`
-      // );
-
       const results = parseSpeechResults(data);
-
-      // console.log(results);
-
       onData(results);
+    })
+    .on("error", err => {
+      onError(err);
     });
 }
 
@@ -87,33 +90,54 @@ const wsServer = new WebSocketServer({
 });
 
 wsServer.on("request", request => {
-  console.log("New socket request");
-
-  const connection = request.accept(null, request.origin);
+  const name = `user${idGenerator}`;
+  const socketConnection = {
+    id: name,
+    name,
+    connection: request.accept(null, request.origin),
+    recognizeStream: null
+  };
+  socketConnections.push(socketConnection);
+  console.log("New socket request", name, socketConnections.map(s => s.name));
+  idGenerator += 1;
 
   const onData = results => {
     (results || []).forEach(result => {
-      connection.sendUTF(JSON.stringify(result));
+      result.id = socketConnection.id;
+      result.name = socketConnection.name;
+      const json = JSON.stringify(result);
+      broadcastMessage(json);
     });
   };
   const onError = err => {
-    console.log("Created new recognizeStream due to error");
-    recognizeStream = setupSpeechRecognizeStream({ onData, onError });
+    socketConnection.recognizeStream = null;
+    console.log(
+      "recognizeStream closed due to error",
+      name,
+      err.name,
+      err.message
+    );
   };
 
-  let recognizeStream = setupSpeechRecognizeStream({ onData, onError });
-
-  connection.on("message", data => {
+  socketConnection.connection.on("message", data => {
+    if (!socketConnection.recognizeStream) {
+      socketConnection.recognizeStream = setupSpeechRecognizeStream({
+        onData,
+        onError
+      });
+      console.log("Created new recognizeStream for", name);
+    }
     const buffer = new Int16Array(
       data.binaryData,
       0,
       Math.floor(data.byteLength / 2)
     );
-    recognizeStream.write(buffer);
+    socketConnection.recognizeStream.write(buffer);
   });
 
-  connection.on("close", connection => {
-    console.log("Socket closed", connection);
-    recognizeStream.end();
+  socketConnection.connection.on("close", () => {
+    socketConnection.recognizeStream && socketConnection.recognizeStream.end();
+    socketConnections = socketConnections.filter(c => c.name !== name);
+    console.log("Socket closed", name, socketConnections.map(s => s.name));
   });
 });
