@@ -28,17 +28,15 @@
         };
 
         connection.onmessage = function(message) {
-          console.log("onmessage", message);
+          // console.log("onmessage", message);
 
-          // try to decode json (I assume that each message
-          // from server is json)
           try {
             var json = JSON.parse(message.data);
+            console.log(json);
           } catch (e) {
             console.log("This doesn't look like a valid JSON: ", message.data);
             return;
           }
-          // handle incoming message
         };
 
         return connection;
@@ -92,16 +90,7 @@
             floatSamples.map(n => n * ConversionFactor)
           );
           socket.send(intSamples);
-          //console.log(intSamples[0], intSamples[1]);
         }
-        // const intSamples = Int16Array.from(
-        //   floatSamples.map(n => n * ConversionFactor)
-        // );
-        // // HERE GOES THE CODE TO SEND THE CHUNKED DATA FROM STREAM
-        // if (socket && socket.readyState === socket.OPEN) {
-        //   socket.send(new Int16Array(floatSamples.buffer));
-        // }
-        // console.log(e, floatSamples, intSamples, floatSamples.buffer);
       };
 
       async function main() {
