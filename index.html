@@ -4,19 +4,68 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SayWhat?</title>
+
+    <script type="text/javascript"> 
+    
+    var Smooth = {
+        init: function(id) {
+            var el = document.getElementsByClassName(id)[0];
+            if (!el.hasAttribute('data-width')) {
+                el.style.display = 'block';
+                el.dataset.width = el.offsetWidth+"px";
+                el.classList.add('smooth');
+                el.style.width = 0;
+            }
+            return el;
+        },
+        toggle: function(id) {
+            
+          var div = Smooth.init(id);
+            if(div.classList.contains('typist-collapsed'))
+            {
+              
+              setTimeout(function() { div.style.width = div.dataset.width; }, 20);
+              div.classList.remove('typist-collapsed');
+            }
+            else{
+              div.style.width = 0;
+              div.classList.add('typist-collapsed');
+            }
+        }
+    }
+    
+    </script>
+
     <style>
       body {
         margin: 0 auto;
         background-image: url("https://stmed.net/sites/default/files/wallpaper-wallpapers-25347-2123783.jpg");
       }
 
+      .smooth { transition: width .5s }
+
+      .typist-collapsed{
+
+      }
+
+      .typist-button{
+        border-radius: 50%;
+        height: 40px;
+        cursor:pointer;
+      }
+
+      .typist-actions{
+        position: absolute;
+        right: 40%;
+        bottom: 19px;
+      }
       .typist-transcript {
         position: fixed;
         left: 0;
         top: 0;
         bottom: 0;
         width: 35%;
-        min-width: 100px;
+        min-width: 0;
         max-width: 500px;
         background-color: rgba(22, 38, 55, 0.8);
         color: white;
@@ -39,7 +88,14 @@
     </style>
   </head>
   <body>
-    <main class="typist-transcript"></main>
+    <main class="typist-transcript">
+      
+    </main>
+
+    <div class="typist-actions" >
+      <button class="typist-button" type="button" onclick="Smooth.toggle('typist-transcript')">[CC]</button>
+     </div>
+    
     <iframe src="https://meet.jit.si/FunnyBugsFlyJovially" allowfullscreen width="100%" height="100%" allow="microphone; camera"></iframe>
     <script type="application/javascript">
       function findLastTranscript(containerDomElem, userId) {
