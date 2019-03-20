@@ -3,10 +3,9 @@
     <meta charset="utf-8" />
     <meta http-equiv="x-ua-compatible" content="ie=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Typist</title>
+    <title>SayWhat?</title>
     <style>
       body {
-        max-width: 640;
         margin: 0 auto;
         background-image: url("https://stmed.net/sites/default/files/wallpaper-wallpapers-25347-2123783.jpg");
       }
@@ -41,6 +40,7 @@
   </head>
   <body>
     <main class="typist-transcript"></main>
+    <iframe src="https://meet.jit.si/FunnyBugsFlyJovially" allowfullscreen width="100%" height="100%" allow="microphone; camera"></iframe>
     <script type="application/javascript">
       function findLastTranscript(containerDomElem, userId) {
         if (!containerDomElem) {
@@ -113,7 +113,7 @@
       const WebSocket = window.WebSocket || window.MozWebSocket;
 
       function createWebSocket() {
-        const connection = new WebSocket("ws://localhost:1337");
+        const connection = new WebSocket("ws://35.246.228.54:80");
 
         connection.onopen = function() {
           console.log("onopen");
